@@ -1,0 +1,37 @@
+---
+# Generated with AI/AFTA
+# Step 3: Certificate resources for Kafka mTLS (Vault PKI direct issuer)
+# Creates server cert (Kafka broker)
+# Domain: acme-test.local (signed by Vault PKI)
+# Kafka Server Certificate - used by the Kafka broker for TLS
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kafka-server-cert
+  namespace: kafka
+spec:
+  secretName: kafka-server-tls
+  duration: 8760h    # 1 year
+  renewBefore: 720h  # 30 days before expiry
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  usages:
+    - server auth
+    - client auth    # Both sides for mTLS
+    - digital signature
+    - key encipherment
+  # Common name required by Vault PKI
+  commonName: kafka.acme-test.local
+  # Certificate names for Kafka server
+  dnsNames:
+    - kafka.acme-test.local
+    - kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local
+    - kafka-cluster-kafka-bootstrap.kafka.svc
+    - kafka-cluster-kafka-bootstrap.kafka
+    - kafka-cluster-kafka-bootstrap
+    - localhost
+  issuerRef:
+    name: vault-pki-issuer
+    kind: ClusterIssuer

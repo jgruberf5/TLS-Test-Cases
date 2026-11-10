@@ -1,0 +1,9 @@
+---
+# Generated with AI/AFTA
+# Step 4: Kafka deployment with mTLS enabled (SSL listener)
+# Uses KRaft mode with PLAINTEXT (9092) + SSL (9094) listeners
+# Vault CA certificates from cert-manager are mounted as PEM files
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka

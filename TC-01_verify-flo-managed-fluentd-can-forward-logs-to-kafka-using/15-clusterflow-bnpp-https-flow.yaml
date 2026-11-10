@@ -1,0 +1,36 @@
+---
+# ClusterFlow for BNPP HTTPS/TLS Logs
+# Routes Observer HTTPS/TLS profile statistics to bnpp-https-logs topic
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterFlow
+metadata:
+  name: bnpp-https-flow
+  namespace: logging
+spec:
+  match:
+    - select:
+        labels:
+          app: observer
+          metric_type: profile_tls_stat
+  filters:
+    # Parse JSON from Observer
+    - parser:
+        parse:
+          type: json
+        key_name: log
+        reserve_data: true
+
+    # Filter for TLS/HTTPS metrics
+    - grep:
+        regexp:
+          - key: metric_name
+            pattern: /^profile_(tls|https)_stat\./
+
+    # Add metadata
+    - record_modifier:
+        records:
+          - source: "bnpp-observer"
+            topic: "bnpp-https-logs"
+
+  globalOutputRefs:
+    - bnpp-https-to-kafka

@@ -1,0 +1,124 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-local
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-local
+  template:
+    metadata:
+      labels:
+        app: kafka-local
+    spec:
+      # Init container: Convert PEM certs to JKS keystore/truststore + generate Kafka config
+      initContainers:
+      - name: pem-to-jks
+        image: eclipse-temurin:17-jre
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+          CERT_DIR="/certs"
+          JKS_DIR="/jks"
+          STORE_PASS="changeit"
+          # Create PKCS12 from PEM
+          openssl pkcs12 -export \
+            -in "$CERT_DIR/tls.crt" \
+            -inkey "$CERT_DIR/tls.key" \
+            -out "$JKS_DIR/kafka.p12" \
+            -name kafka-server \
+            -password "pass:$STORE_PASS"
+          # Convert PKCS12 to JKS keystore
+          keytool -importkeystore \
+            -srckeystore "$JKS_DIR/kafka.p12" \
+            -srcstoretype PKCS12 \
+            -srcstorepass "$STORE_PASS" \
+            -destkeystore "$JKS_DIR/kafka.keystore.jks" \
+            -deststoretype JKS \
+            -deststorepass "$STORE_PASS" \
+            -noprompt
+          # Extract intermediate CA from tls.crt (second certificate)
+          awk '/BEGIN CERTIFICATE/{i++}i==2{print}i==2&&/END CERTIFICATE/{exit}' "$CERT_DIR/tls.crt" > "$JKS_DIR/intermediate-ca.crt"
+          # Create truststore with Root CA certificate
+          keytool -import \
+            -file "$CERT_DIR/ca.crt" \
+            -alias root-ca \
+            -keystore "$JKS_DIR/kafka.truststore.jks" \
+            -storepass "$STORE_PASS" \
+            -noprompt
+          # Also import Intermediate CA to truststore
+          keytool -import \
+            -file "$JKS_DIR/intermediate-ca.crt" \
+            -alias intermediate-ca \
+            -keystore "$JKS_DIR/kafka.truststore.jks" \
+            -storepass "$STORE_PASS" \
+            -noprompt
+          echo "JKS created successfully with Root + Intermediate CA in truststore"
+          ls -la "$JKS_DIR/"
+          keytool -list -keystore "$JKS_DIR/kafka.truststore.jks" -storepass "$STORE_PASS"
+        volumeMounts:
+        - name: server-certs
+          mountPath: /certs
+          readOnly: true
+        - name: jks-certs
+          mountPath: /jks
+      containers:
+      - name: kafka
+        image: apache/kafka:3.7.1
+        ports:
+        - containerPort: 9092
+        - containerPort: 9093
+        - containerPort: 9094
+        # Override entrypoint to avoid configure script parsing issues
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          # Generate KRaft cluster ID storage
+          CLUSTER_ID="MkU3OEVBNTcwNTJENDM2Qk"
+          LOG_DIR="/tmp/kraft-combined-logs"
+          # Create server.properties with mTLS
+          cat > /tmp/server.properties <<PROPS
+          node.id=1
+          process.roles=broker,controller
+          listeners=PLAINTEXT://:9092,SSL://:9094,CONTROLLER://:9093
+          advertised.listeners=PLAINTEXT://kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092,SSL://kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9094
+          controller.listener.names=CONTROLLER
+          listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL
+          controller.quorum.voters=1@localhost:9093
+          log.dirs=${LOG_DIR}
+          offsets.topic.replication.factor=1
+          transaction.state.log.replication.factor=1
+          transaction.state.log.min.isr=1
+          group.initial.rebalance.delay.ms=0
+          num.partitions=1
+          # SSL/mTLS configuration
+          ssl.keystore.location=/opt/kafka/jks/kafka.keystore.jks
+          ssl.keystore.password=changeit
+          ssl.key.password=changeit
+          ssl.truststore.location=/opt/kafka/jks/kafka.truststore.jks
+          ssl.truststore.password=changeit
+          ssl.client.auth=required
+          ssl.endpoint.identification.algorithm=
+          PROPS
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' /tmp/server.properties
+          # Format storage if needed
+          if [ ! -f "${LOG_DIR}/meta.properties" ]; then
+            /opt/kafka/bin/kafka-storage.sh format -t "$CLUSTER_ID" -c /tmp/server.properties --ignore-formatted
+          fi
+          # Start Kafka
+          exec /opt/kafka/bin/kafka-server-start.sh /tmp/server.properties
+        volumeMounts:
+        - name: jks-certs
+          mountPath: /opt/kafka/jks
+          readOnly: true
+      volumes:
+      - name: server-certs
+        secret:
+          secretName: kafka-server-tls
+      - name: jks-certs
+        emptyDir: {}

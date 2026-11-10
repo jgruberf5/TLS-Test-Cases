@@ -1,0 +1,31 @@
+---
+# Generated with AI/AFTA
+# Step 2: ClusterIssuer that uses Vault ACME CA with DNS-01 challenge
+# Vault ACME DNS-01 endpoint: http://10.145.34.48:8300/v1/pki_int/acme/directory
+# Domain: acme-test.local
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: vault-acme-issuer
+spec:
+  acme:
+    # Vault ACME directory endpoint (DNS-01 on port 8300)
+    server: http://10.145.34.48:8300/v1/pki_int/acme/directory
+    # Email for ACME registration
+    email: admin@f5net.com
+    # Secret to store the ACME account private key
+    privateKeySecretRef:
+      name: vault-acme-account-key
+    # DNS-01 challenge solver using RFC2136 (dynamic DNS updates to CoreDNS)
+    solvers:
+    - dns01:
+        rfc2136:
+          nameserver: 10.145.34.48:8053
+          tsigAlgorithm: HMACSHA256
+          tsigKeyName: acme-key
+          tsigSecretSecretRef:
+            name: acme-dns-tsig-secret
+            key: tsig-secret-key
+      selector:
+        dnsZones:
+        - "acme-test.local"

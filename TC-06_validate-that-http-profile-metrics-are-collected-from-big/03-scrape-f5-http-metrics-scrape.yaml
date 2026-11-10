@@ -1,0 +1,90 @@
+---
+apiVersion: metrics.f5.net/v1alpha1
+kind: Scrape
+metadata:
+  name: f5-http-metrics-scrape
+  namespace: f5-alpha
+  labels:
+    app: f5-http-metrics
+    component: scrape
+spec:
+  scrapeClass: f5-http-metrics-class
+  jobs:
+    # HTTP Profile Metrics
+    - name: http-requests
+      every: 30s
+      scrapeInterval: 28s
+      query: |-
+        label_move(
+          coalesce(
+            {__name__="f5.profile_http.requests", __table__="profile_http_stat"}
+          ),
+          "__namespace__", "k8s.namespace.name",
+          "__bucket_namespace__", "target.namespace",
+          "__profile_http_name__", "f5_profile_http_name",
+          "__virtual_server_name__", "f5_virtual_server_name"
+        )
+    - name: http-responses
+      every: 30s
+      scrapeInterval: 28s
+      query: |-
+        label_move(
+          coalesce(
+            {__name__=~"f5.profile_http.responses.*", __table__="profile_http_stat"}
+          ),
+          "__namespace__", "k8s.namespace.name",
+          "__bucket_namespace__", "target.namespace",
+          "__profile_http_name__", "f5_profile_http_name",
+          "__virtual_server_name__", "f5_virtual_server_name"
+        )
+    - name: http-method-stats
+      every: 30s
+      scrapeInterval: 28s
+      query: |-
+        label_move(
+          coalesce(
+            {__name__=~"f5.profile_http.requests.*", __table__="profile_http_stat"}
+          ),
+          "__namespace__", "k8s.namespace.name",
+          "__bucket_namespace__", "target.namespace",
+          "__profile_http_name__", "f5_profile_http_name",
+          "__virtual_server_name__", "f5_virtual_server_name"
+        )
+    - name: http-cookie-persist
+      every: 30s
+      scrapeInterval: 28s
+      query: |-
+        label_move(
+          coalesce(
+            {__name__="f5.profile_http.cookie_persist_inserts", __table__="profile_http_stat"}
+          ),
+          "__namespace__", "k8s.namespace.name",
+          "__bucket_namespace__", "target.namespace",
+          "__profile_http_name__", "f5_profile_http_name"
+        )
+    # Virtual Server Metrics
+    - name: virtual-server-packets
+      every: 30s
+      scrapeInterval: 28s
+      query: |-
+        label_move(
+          coalesce(
+            {__name__=~"f5.virtual_server.clientside.*packets", __table__="virtual_server_stat"}
+          ),
+          "__namespace__", "k8s.namespace.name",
+          "__bucket_namespace__", "target.namespace",
+          "__virtual_server_name__", "f5_virtual_server_name"
+        )
+    - name: virtual-server-stats
+      every: 30s
+      scrapeInterval: 28s
+      query: |-
+        label_move(
+          coalesce(
+            {__name__=~"f5.virtual_server.clientside.*", __table__="virtual_server_stat"}
+          ),
+          "__namespace__", "k8s.namespace.name",
+          "__bucket_namespace__", "target.namespace",
+          "__virtual_server_name__", "f5_virtual_server_name",
+          "__virtual_server_destination__", "f5_virtual_server_destination"
+        )

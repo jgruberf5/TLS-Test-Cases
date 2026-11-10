@@ -1,0 +1,15 @@
+---
+# TC-07 override: replaces the test plan's YAML, which was a copy of TC-06's
+# HTTP-only resources. Own names so applying TC-07 does not overwrite TC-06.
+apiVersion: metrics.f5.net/v1alpha1
+kind: ScrapeClass
+metadata:
+  name: f5-ssl-metrics-class
+  labels:
+    app: f5-ssl-metrics
+    component: scrapeclass
+spec:
+  scope: Namespaced
+  allowedNamespaces:
+    - f5-alpha
+    - appns-2

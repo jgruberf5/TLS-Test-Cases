@@ -1,0 +1,21 @@
+---
+# BNPP HTTPS Logs Topic
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bnpp-https-logs
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-cluster
+  annotations:
+    description: "BNPP HTTPS/TLS profile statistics and logs from Observer"
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 604800000      # 7 days retention
+    segment.bytes: 1073741824    # 1GB segment size
+    compression.type: producer   # Use producer's compression setting
+    min.insync.replicas: 2       # Require 2 replicas for ack
+    cleanup.policy: delete       # Delete old segments
+    max.message.bytes: 1048576   # 1MB max message size

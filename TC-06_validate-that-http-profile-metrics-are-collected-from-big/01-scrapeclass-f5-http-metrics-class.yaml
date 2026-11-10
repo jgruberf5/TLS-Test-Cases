@@ -1,0 +1,13 @@
+---
+apiVersion: metrics.f5.net/v1alpha1
+kind: ScrapeClass
+metadata:
+  name: f5-http-metrics-class
+  labels:
+    app: f5-http-metrics
+    component: scrapeclass
+spec:
+  scope: Namespaced
+  allowedNamespaces:
+    - f5-alpha
+    - appns-2

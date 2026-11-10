@@ -1,0 +1,31 @@
+---
+# TC-07 override: scrape the client SSL and server SSL profile tables.
+#
+# No metricNames: a ScrapeTemplate job is per table, and the Observer generates
+# the per-metric Scrape CR from its descriptor ("TMA - Observer CRD Generation
+# for Custom Statistics Support", Confluence 1192246275). That exports every
+# metric the descriptor defines for these tables, so no metric names are guessed
+# here and no hand-written Scrape CR is needed.
+apiVersion: metrics.f5.net/v1alpha1
+kind: ScrapeTemplate
+metadata:
+  name: f5-ssl-metrics-template
+  namespace: f5-alpha
+  labels:
+    app: f5-ssl-metrics
+    component: scrapetemplate
+spec:
+  scrapeClass: f5-ssl-metrics-class
+  jobs:
+  # Client SSL profile: client-facing TLS terminated by the Virtual Server.
+  - name: clientssl-profile-stats
+    table: profile_clientssl_stat
+    every: 30s
+    scrapeInterval: 28s
+    aggregation: Aggregated
+  # Server SSL profile: backend TLS from TMM to the OpenSSL s_server.
+  - name: serverssl-profile-stats
+    table: profile_serverssl_stat
+    every: 30s
+    scrapeInterval: 28s
+    aggregation: Aggregated

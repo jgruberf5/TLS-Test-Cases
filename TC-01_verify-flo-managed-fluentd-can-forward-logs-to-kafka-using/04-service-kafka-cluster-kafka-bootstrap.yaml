@@ -1,0 +1,17 @@
+---
+# Service exposes both PLAINTEXT (9092) and SSL (9094) ports
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-cluster-kafka-bootstrap
+  namespace: kafka
+spec:
+  ports:
+  - name: plaintext
+    port: 9092
+    targetPort: 9092
+  - name: ssl
+    port: 9094
+    targetPort: 9094
+  selector:
+    app: kafka-local

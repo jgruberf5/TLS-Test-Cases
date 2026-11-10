@@ -1,0 +1,39 @@
+---
+# Generated with AI/AFTA
+# BNPP ClusterOutput configurations for HTTP and HTTPS logs
+# Routes BNPP Observer metrics to dedicated Kafka topics
+# ClusterOutput for BNPP HTTP Logs
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterOutput
+metadata:
+  name: bnpp-http-to-kafka
+  namespace: logging
+spec:
+  kafka:
+    brokers:
+      - kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9094
+    default_topic: "bnpp-http-logs"
+    format:
+      type: json
+    buffer:
+      type: file
+      flush_mode: interval
+      flush_interval: 10s
+      retry_forever: true
+
+    # mTLS configuration
+    ssl_ca_cert:
+      mountFrom:
+        secretKeyRef:
+          name: toda-kafka-client-tls
+          key: ca.crt
+    ssl_client_cert:
+      mountFrom:
+        secretKeyRef:
+          name: toda-kafka-client-tls
+          key: tls.crt
+    ssl_client_cert_key:
+      mountFrom:
+        secretKeyRef:
+          name: toda-kafka-client-tls
+          key: tls.key

@@ -1,0 +1,19 @@
+---
+# Generated with AI/AFTA
+# ClusterFlow with HTTP log filtering
+# Only forwards logs matching HTTP patterns to Kafka
+apiVersion: logging.banzaicloud.io/v1beta1
+kind: ClusterFlow
+metadata:
+  name: http-logs-to-kafka
+  namespace: logging
+spec:
+  filters:
+  - grep:
+      regexp:
+      - key: log
+        pattern: '/(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|HTTP\/\d\.\d|status[=: ]*\d{3})/i'
+  globalOutputRefs:
+  - http-kafka-output
+  match:
+  - select: {}
